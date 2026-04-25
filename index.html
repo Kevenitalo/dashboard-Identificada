@@ -2,12 +2,12 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Dashboard de Perdas - CGO</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
@@ -23,58 +23,114 @@
         header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 30px;
+            padding: 25px 20px;
             text-align: center;
+        }
+        header h1 { font-size: 1.6em; margin-bottom: 8px; }
+        header p { font-size: 0.9em; opacity: 0.9; }
+        .botoes-modo {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 15px;
+        }
+        .btn-modo {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .btn-modo.ativo {
+            background: white;
+            color: #667eea;
         }
         .aviso {
             background: #e8f4fd;
             padding: 10px 20px;
-            margin: 15px 30px;
-            border-radius: 8px;
+            margin: 15px 20px 0 20px;
+            border-radius: 10px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
             flex-wrap: wrap;
+            gap: 10px;
             font-size: 13px;
         }
-        .dashboard { padding: 30px; }
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            margin: 20px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover { border-color: #764ba2; background: #f0e6ff; }
+        .upload-icon { font-size: 48px; margin-bottom: 10px; }
+        .btn-upload {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .btn-limpar {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        .dashboard { padding: 20px; }
         .cards {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
         }
         .card {
             background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
             text-align: center;
         }
         .card-maturacao { border-top: 4px solid #FFB347; }
         .card-avaria { border-top: 4px solid #FF6B6B; }
         .card-vencimento { border-top: 4px solid #4ECDC4; }
-        .valor { font-size: 2.2em; font-weight: bold; color: #667eea; margin: 10px 0; }
-        .sub-valor { font-size: 0.85em; color: #666; }
+        .card h3 { font-size: 1em; color: #555; margin-bottom: 10px; }
+        .valor { font-size: 1.8em; font-weight: bold; color: #667eea; }
+        .sub-valor { font-size: 0.8em; color: #888; margin-top: 5px; }
         .graficos-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
         }
         .grafico-card {
             background: white;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
         }
-        .grafico-card h3 { margin-bottom: 15px; font-size: 1em; text-align: center; }
-        canvas { max-height: 280px; width: 100%; }
+        .grafico-card h3 { margin-bottom: 12px; font-size: 0.95em; text-align: center; color: #555; }
+        canvas { max-height: 240px; width: 100%; }
         .tabela-container {
             background: white;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            overflow-x: auto;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
         }
         .filtros {
             display: flex;
@@ -86,24 +142,64 @@
             padding: 8px 12px;
             border: 1px solid #ddd;
             border-radius: 8px;
+            font-size: 13px;
+            flex: 1;
+            min-width: 150px;
         }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background: #667eea; color: white; position: sticky; top: 0; }
+        .tabela-wrapper {
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #667eea; color: white; position: sticky; top: 0; font-weight: 600; }
         tr:hover { background: #f5f5f5; }
-        .contador { margin-top: 15px; text-align: right; font-size: 12px; color: #888; }
-        .btn-atualizar {
-            background: #28a745;
+        .contador { margin-top: 12px; text-align: right; font-size: 11px; color: #888; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 320px;
+            width: 90%;
+        }
+        .modal-content h3 { margin-bottom: 10px; }
+        .modal-content input {
+            width: 100%;
+            padding: 12px;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 16px;
+        }
+        .modal-content button {
+            background: #667eea;
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
+            padding: 10px 25px;
+            border-radius: 25px;
             cursor: pointer;
-            margin-left: 10px;
+            width: 100%;
         }
-        @media (max-width: 768px) {
+        .erro { color: #dc3545; font-size: 12px; margin-top: 10px; display: none; }
+        @media (max-width: 600px) {
+            .valor { font-size: 1.3em; }
             .graficos-grid { grid-template-columns: 1fr; }
-            .valor { font-size: 1.5em; }
+            th, td { padding: 6px 4px; font-size: 10px; }
         }
     </style>
 </head>
@@ -111,201 +207,301 @@
     <div class="container">
         <header>
             <h1>📊 Dashboard de Perdas - CGO</h1>
-            <p>Visualize as perdas por maturação, avaria e vencimento</p>
+            <p>Perdas por Maturação, Avaria e Vencimento</p>
+            <div class="botoes-modo">
+                <button id="btnVisual" class="btn-modo ativo">👁️ VISUALIZAR</button>
+                <button id="btnAdmin" class="btn-modo">🔐 ADMIN</button>
+            </div>
         </header>
 
-        <div class="aviso">
-            <span>📊 Dados atualizados em: <span id="dataAtualizacao">--/--/----</span></span>
-            <span>👥 Modo de visualização - Dados oficiais</span>
+        <div class="aviso" id="avisoArea">
+            <span>👥 Modo de visualização</span>
+            <span>📅 Dados de: <span id="dataAtualizacao">--/--/----</span></span>
+        </div>
+
+        <div id="areaUpload" style="display: none;">
+            <div class="upload-area" id="dropZone">
+                <div class="upload-icon">📂</div>
+                <p><strong>Arraste o arquivo Excel aqui</strong></p>
+                <p>ou</p>
+                <button class="btn-upload" onclick="document.getElementById('fileExcel').click()">Clique para selecionar</button>
+                <input type="file" id="fileExcel" accept=".xlsx, .xls" style="display: none;">
+                <div><button id="btnLimpar" class="btn-limpar">🗑️ LIMPAR DADOS</button></div>
+                <p style="font-size: 11px; color: #888; margin-top: 12px;">Após o upload, todos os usuários verão os novos dados</p>
+            </div>
         </div>
 
         <div class="dashboard" id="dashboard">
             <div class="cards">
-                <div class="card card-maturacao">
-                    <h3>🍎 Perda por Maturação</h3>
-                    <div class="valor" id="totalMaturacao">-- kg</div>
-                    <div class="sub-valor" id="valorMaturacao">R$ --</div>
-                </div>
-                <div class="card card-avaria">
-                    <h3>💔 Perda por Avaria</h3>
-                    <div class="valor" id="totalAvaria">-- kg</div>
-                    <div class="sub-valor" id="valorAvaria">R$ --</div>
-                </div>
-                <div class="card card-vencimento">
-                    <h3>⏰ Perda por Vencimento</h3>
-                    <div class="valor" id="totalVencimento">-- kg</div>
-                    <div class="sub-valor" id="valorVencimento">R$ --</div>
-                </div>
+                <div class="card card-maturacao"><h3>🍎 Maturação</h3><div class="valor" id="totalMat">-- kg</div><div class="sub-valor" id="valorMat">R$ --</div></div>
+                <div class="card card-avaria"><h3>💔 Avaria</h3><div class="valor" id="totalAva">-- kg</div><div class="sub-valor" id="valorAva">R$ --</div></div>
+                <div class="card card-vencimento"><h3>⏰ Vencimento</h3><div class="valor" id="totalVen">-- kg</div><div class="sub-valor" id="valorVen">R$ --</div></div>
             </div>
 
             <div class="graficos-grid">
-                <div class="grafico-card"><h3>📊 Comparativo por Tipo</h3><canvas id="chartComparativo"></canvas></div>
-                <div class="grafico-card"><h3>🏪 Perdas por Loja</h3><canvas id="chartLojas"></canvas></div>
-                <div class="grafico-card"><h3>📦 Top Produtos</h3><canvas id="chartProdutos"></canvas></div>
-                <div class="grafico-card"><h3>📋 Motivos de Perda</h3><canvas id="chartMotivos"></canvas></div>
+                <div class="grafico-card"><h3>📊 Comparativo</h3><canvas id="grafPizza"></canvas></div>
+                <div class="grafico-card"><h3>🏪 Perdas por Loja</h3><canvas id="grafLojas"></canvas></div>
+                <div class="grafico-card"><h3>📦 Top Produtos</h3><canvas id="grafProdutos"></canvas></div>
+                <div class="grafico-card"><h3>📋 Motivos</h3><canvas id="grafMotivos"></canvas></div>
             </div>
             
             <div class="tabela-container">
                 <div class="filtros">
-                    <input type="text" id="filtroProduto" placeholder="🔍 Filtrar produto..." class="filtro-input">
+                    <input type="text" id="filtroProd" placeholder="🔍 Filtrar produto..." class="filtro-input">
                     <select id="filtroTipo" class="filtro-select">
-                        <option value="todos">📌 Todos os tipos</option>
+                        <option value="todos">📌 Todos</option>
                         <option value="Maturação">🍎 Maturação</option>
                         <option value="Avaria">💔 Avaria</option>
                         <option value="Vencimento">⏰ Vencimento</option>
                     </select>
                 </div>
                 <div class="tabela-wrapper">
-                    <table id="tabelaPerdas">
-                        <thead>
-                            <tr><th>Loja</th><th>Produto</th><th>Motivo</th><th>Tipo</th><th>Perda (kg)</th><th>Valor (R$)</th></tr>
-                        </thead>
-                        <tbody id="tabelaBody"><tr><td colspan="6" style="text-align: center;">⏳ Carregando dados...</td></tr></tbody>
+                    <table id="tabela">
+                        <thead><tr><th>Loja</th><th>Produto</th><th>Motivo</th><th>Tipo</th><th>Perda (kg)</th><th>Valor (R$)</th></tr></thead>
+                        <tbody id="tbody"><table><td colspan="6" style="text-align: center;">📁 Nenhum dado carregado</td></tr></tbody>
                     </table>
                 </div>
-                <div class="contador" id="contadorRegistros"></div>
+                <div class="contador" id="contador"></div>
             </div>
+        </div>
+    </div>
+
+    <div id="modalSenha" class="modal">
+        <div class="modal-content">
+            <h3>🔐 Área Restrita</h3>
+            <p>Digite a senha de ADMIN:</p>
+            <input type="password" id="senhaInput" placeholder="Senha" autocomplete="off">
+            <button onclick="verificarSenha()">Entrar</button>
+            <div id="msgErro" class="erro">❌ Senha incorreta!</div>
         </div>
     </div>
 
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
-        // ==================== COLE SEUS DADOS AQUI ====================
-        // 1. Execute no console: copy(localStorage.getItem('dashboardData'))
-        // 2. Cole dentro das aspas abaixo no lugar de "COLAR_DADOS_AQUI"
+        // ============================================
+        // CONFIGURAÇÃO
+        const SENHA_ADMIN = "Keven348";
         
-        const DADOS_FIXOS = "COLAR_DADOS_AQUI";
+        // Variáveis globais
+        let graficos = {};
+        let todosDados = [];
+        let adminAtivo = false;
         
-        // ==================== FIM DOS DADOS ====================
+        // Elementos DOM
+        const btnVisual = document.getElementById('btnVisual');
+        const btnAdmin = document.getElementById('btnAdmin');
+        const areaUpload = document.getElementById('areaUpload');
+        const avisoArea = document.getElementById('avisoArea');
+        const modal = document.getElementById('modalSenha');
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileExcel');
+        const btnLimpar = document.getElementById('btnLimpar');
         
-        let charts = {};
+        // ============================================
+        // FUNÇÕES DE MODO
+        btnVisual.onclick = () => {
+            adminAtivo = false;
+            btnVisual.classList.add('ativo');
+            btnAdmin.classList.remove('ativo');
+            areaUpload.style.display = 'none';
+            avisoArea.innerHTML = '<span>👥 Modo de visualização</span><span>📅 Dados de: <span id="dataAtualizacao2">--/--/----</span></span>';
+            const dataSpan = document.getElementById('dataAtualizacao');
+            if(dataSpan) document.getElementById('dataAtualizacao2').textContent = dataSpan.textContent;
+        };
         
+        btnAdmin.onclick = () => {
+            if(adminAtivo) ativarAdmin();
+            else modal.style.display = 'flex';
+        };
+        
+        function verificarSenha() {
+            const senha = document.getElementById('senhaInput').value;
+            if(senha === SENHA_ADMIN) {
+                modal.style.display = 'none';
+                adminAtivo = true;
+                ativarAdmin();
+            } else {
+                document.getElementById('msgErro').style.display = 'block';
+                document.getElementById('senhaInput').value = '';
+            }
+        }
+        
+        function ativarAdmin() {
+            btnAdmin.classList.add('ativo');
+            btnVisual.classList.remove('ativo');
+            areaUpload.style.display = 'block';
+            avisoArea.innerHTML = '<span>🔐 MODO ADMIN - Você pode atualizar os dados</span><span>📅 Dados de: <span id="dataAtualizacao2">--/--/----</span></span>';
+            const dataSpan = document.getElementById('dataAtualizacao');
+            if(dataSpan) document.getElementById('dataAtualizacao2').textContent = dataSpan.textContent;
+        }
+        
+        // Fechar modal com Enter
+        document.getElementById('senhaInput').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') verificarSenha();
+        });
+        
+        modal.onclick = (e) => { if(e.target === modal) modal.style.display = 'none'; };
+        
+        // ============================================
+        // UPLOAD DO EXCEL
+        if(dropZone) {
+            dropZone.onclick = () => fileInput.click();
+            dropZone.ondragover = (e) => { e.preventDefault(); dropZone.style.borderColor = '#764ba2'; };
+            dropZone.ondragleave = () => { dropZone.style.borderColor = '#667eea'; };
+            dropZone.ondrop = (e) => {
+                e.preventDefault();
+                dropZone.style.borderColor = '#667eea';
+                const file = e.dataTransfer.files[0];
+                if(file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) processarArquivo(file);
+                else alert('Envie um arquivo .xlsx');
+            };
+        }
+        
+        fileInput.onchange = (e) => { if(e.target.files[0]) processarArquivo(e.target.files[0]); };
+        
+        btnLimpar.onclick = () => {
+            if(confirm('⚠️ Isso vai apagar TODOS os dados. Os usuários verão tela vazia até você fazer novo upload. Confirmar?')) {
+                localStorage.clear();
+                location.reload();
+            }
+        };
+        
+        function processarArquivo(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const dados = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(dados, { type: 'array' });
+                    let lista = [];
+                    workbook.SheetNames.forEach(nome => {
+                        const json = XLSX.utils.sheet_to_json(workbook.Sheets[nome]);
+                        lista = lista.concat(json);
+                    });
+                    if(lista.length === 0) throw new Error('Nenhum dado encontrado');
+                    processarDados(lista);
+                    localStorage.setItem('dashboardData', JSON.stringify(lista));
+                    localStorage.setItem('lastUpdate', new Date().toISOString());
+                    document.getElementById('dataAtualizacao').textContent = new Date().toLocaleDateString('pt-BR');
+                    alert(`✅ Sucesso! ${lista.length} registros carregados. Todos os usuários agora verão os novos dados.`);
+                } catch(error) {
+                    alert('Erro: ' + error.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // ============================================
+        // PROCESSAMENTO DOS DADOS
         function processarDados(data) {
-            let dadosCompletos = [];
-            let maturacao=0, avaria=0, vencimento=0, valMat=0, valAv=0, valVen=0;
+            todosDados = [];
+            let matKg=0, avaKg=0, venKg=0, matVal=0, avaVal=0, venVal=0;
             let porLoja = {}, porProduto = {}, porMotivo = {};
             
             data.forEach(row => {
-                const loja = row['Loja'] || 'Não especificada';
-                const produto = (row['Produto'] || 'Não especificado').toString();
+                const loja = row['Loja'] || 'Desconhecida';
+                let produto = (row['Produto'] || 'Desconhecido').toString();
+                if(produto.length > 40) produto = produto.substring(0,40)+'...';
                 const motivo = row['Desc. Motivo'] || '';
-                let peso = Math.abs(parseFloat(row['Peso (Kg)'] || row['Quantidade'] || 0));
+                let kg = Math.abs(parseFloat(row['Peso (Kg)'] || row['Quantidade'] || 0));
                 const valor = Math.abs(parseFloat(row['Valor'] || 0));
                 
-                let tipo = 'Outros';
-                const textoMotivo = motivo.toLowerCase();
-                if(textoMotivo.includes('maturação')) { tipo='Maturação'; maturacao+=peso; valMat+=valor; }
-                else if(textoMotivo.includes('avaria')) { tipo='Avaria'; avaria+=peso; valAv+=valor; }
-                else if(textoMotivo.includes('vencimento')) { tipo='Vencimento'; vencimento+=peso; valVen+=valor; }
+                let tipo = '';
+                const txt = motivo.toLowerCase();
+                if(txt.includes('maturação')) { tipo='Maturação'; matKg+=kg; matVal+=valor; }
+                else if(txt.includes('avaria')) { tipo='Avaria'; avaKg+=kg; avaVal+=valor; }
+                else if(txt.includes('vencimento')) { tipo='Vencimento'; venKg+=kg; venVal+=valor; }
                 
-                if(peso > 0 && tipo !== 'Outros') {
-                    porLoja[loja] = (porLoja[loja]||0) + peso;
-                    const nomeProd = produto.length>35 ? produto.substring(0,35)+'...' : produto;
-                    porProduto[nomeProd] = (porProduto[nomeProd]||0) + peso;
+                if(kg > 0 && tipo) {
+                    porLoja[loja] = (porLoja[loja]||0) + kg;
+                    porProduto[produto] = (porProduto[produto]||0) + kg;
                     const motivoKey = motivo.split(' - ')[0] || motivo || 'Sem motivo';
-                    porMotivo[motivoKey] = (porMotivo[motivoKey]||0) + peso;
-                    dadosCompletos.push({ loja, produto: nomeProd, motivo, tipo, quantidade: peso, valor });
+                    porMotivo[motivoKey] = (porMotivo[motivoKey]||0) + kg;
+                    todosDados.push({ loja, produto, motivo, tipo, kg, valor });
                 }
             });
             
-            document.getElementById('totalMaturacao').innerHTML = maturacao.toFixed(1)+' kg';
-            document.getElementById('totalAvaria').innerHTML = avaria.toFixed(1)+' kg';
-            document.getElementById('totalVencimento').innerHTML = vencimento.toFixed(1)+' kg';
-            document.getElementById('valorMaturacao').innerHTML = 'R$ '+valMat.toFixed(2);
-            document.getElementById('valorAvaria').innerHTML = 'R$ '+valAv.toFixed(2);
-            document.getElementById('valorVencimento').innerHTML = 'R$ '+valVen.toFixed(2);
+            // Atualizar cards
+            document.getElementById('totalMat').innerHTML = matKg.toFixed(1)+' kg';
+            document.getElementById('totalAva').innerHTML = avaKg.toFixed(1)+' kg';
+            document.getElementById('totalVen').innerHTML = venKg.toFixed(1)+' kg';
+            document.getElementById('valorMat').innerHTML = 'R$ '+matVal.toFixed(2);
+            document.getElementById('valorAva').innerHTML = 'R$ '+avaVal.toFixed(2);
+            document.getElementById('valorVen').innerHTML = 'R$ '+venVal.toFixed(2);
             
-            criarGraficos(maturacao, avaria, vencimento, porLoja, porProduto, porMotivo);
-            atualizarTabela(dadosCompletos);
+            // Gráficos
+            if(graficos.pizza) graficos.pizza.destroy();
+            graficos.pizza = new Chart(document.getElementById('grafPizza'), {
+                type: 'pie',
+                data: { labels: ['Maturação','Avaria','Vencimento'], datasets: [{ data: [matKg,avaKg,venKg], backgroundColor: ['#FFB347','#FF6B6B','#4ECDC4'] }] }
+            });
             
-            return dadosCompletos;
+            const topLojas = Object.entries(porLoja).sort((a,b)=>b[1]-a[1]).slice(0,5);
+            if(graficos.lojas) graficos.lojas.destroy();
+            graficos.lojas = new Chart(document.getElementById('grafLojas'), {
+                type: 'bar',
+                data: { labels: topLojas.map(l=>l[0].substring(0,18)), datasets: [{ label: 'kg', data: topLojas.map(l=>l[1]), backgroundColor: '#667eea' }] }
+            });
+            
+            const topProds = Object.entries(porProduto).sort((a,b)=>b[1]-a[1]).slice(0,6);
+            if(graficos.prod) graficos.prod.destroy();
+            graficos.prod = new Chart(document.getElementById('grafProdutos'), {
+                type: 'bar',
+                data: { labels: topProds.map(p=>p[0]), datasets: [{ label: 'kg', data: topProds.map(p=>p[1]), backgroundColor: '#764ba2' }] },
+                options: { indexAxis: 'y' }
+            });
+            
+            const topMotivos = Object.entries(porMotivo).sort((a,b)=>b[1]-a[1]).slice(0,5);
+            if(graficos.mot) graficos.mot.destroy();
+            graficos.mot = new Chart(document.getElementById('grafMotivos'), {
+                type: 'pie',
+                data: { labels: topMotivos.map(m=>m[0].substring(0,22)), datasets: [{ data: topMotivos.map(m=>m[1]), backgroundColor: ['#FFB347','#FF6B6B','#4ECDC4','#95A5A6','#3498DB'] }] }
+            });
+            
+            atualizarTabela();
         }
         
-        function criarGraficos(m,a,v,lojas,produtos,motivos) {
-            if(charts.comp) charts.comp.destroy();
-            charts.comp = new Chart(document.getElementById('chartComparativo'), {
-                type: 'pie',
-                data: { labels: ['Maturação','Avaria','Vencimento'], datasets: [{ data: [m,a,v], backgroundColor: ['#FFB347','#FF6B6B','#4ECDC4'] }] },
-                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-            });
-            
-            const lojasArr = Object.entries(lojas).sort((a,b)=>b[1]-a[1]).slice(0,6);
-            if(charts.lojas) charts.lojas.destroy();
-            charts.lojas = new Chart(document.getElementById('chartLojas'), {
-                type: 'bar',
-                data: { labels: lojasArr.map(l=>l[0].length>20 ? l[0].substring(0,20)+'...' : l[0]), datasets: [{ label: 'Perda (kg)', data: lojasArr.map(l=>l[1]), backgroundColor: '#667eea' }] },
-                options: { responsive: true }
-            });
-            
-            const prodArr = Object.entries(produtos).sort((a,b)=>b[1]-a[1]).slice(0,8);
-            if(charts.prod) charts.prod.destroy();
-            charts.prod = new Chart(document.getElementById('chartProdutos'), {
-                type: 'bar',
-                data: { labels: prodArr.map(p=>p[0]), datasets: [{ label: 'Perda (kg)', data: prodArr.map(p=>p[1]), backgroundColor: '#764ba2' }] },
-                options: { responsive: true, indexAxis: 'y' }
-            });
-            
-            const motArr = Object.entries(motivos).sort((a,b)=>b[1]-a[1]).slice(0,5);
-            if(charts.mot) charts.mot.destroy();
-            charts.mot = new Chart(document.getElementById('chartMotivos'), {
-                type: 'pie',
-                data: { labels: motArr.map(m=>m[0].length>25 ? m[0].substring(0,25)+'...' : m[0]), datasets: [{ data: motArr.map(m=>m[1]), backgroundColor: ['#FFB347','#FF6B6B','#4ECDC4','#95A5A6','#3498DB'] }] },
-                options: { responsive: true, plugins: { legend: { position: 'right' } } }
-            });
-        }
-        
-        let dadosGlobais = [];
-        
-        function atualizarTabela(dados) {
-            dadosGlobais = dados;
-            const tipo = document.getElementById('filtroTipo').value;
-            const filtro = document.getElementById('filtroProduto').value.toLowerCase();
-            
-            let filtrados = dados.filter(d => {
-                if(tipo !== 'todos' && d.tipo !== tipo) return false;
-                if(filtro && !d.produto.toLowerCase().includes(filtro) && !d.motivo.toLowerCase().includes(filtro)) return false;
+        function atualizarTabela() {
+            const tipoFiltro = document.getElementById('filtroTipo').value;
+            const busca = document.getElementById('filtroProd').value.toLowerCase();
+            let filtrados = todosDados.filter(d => {
+                if(tipoFiltro !== 'todos' && d.tipo !== tipoFiltro) return false;
+                if(busca && !d.produto.toLowerCase().includes(busca)) return false;
                 return true;
             });
+            filtrados.sort((a,b) => b.kg - a.kg);
             
-            filtrados.sort((a,b) => b.quantidade - a.quantidade);
-            
-            const tbody = document.getElementById('tabelaBody');
+            const tbody = document.getElementById('tbody');
             tbody.innerHTML = '';
-            
             if(filtrados.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">📁 Nenhum registro encontrado</td></tr>';
-                document.getElementById('contadorRegistros').textContent = '';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Nenhum registro encontrado</td></tr>';
+                document.getElementById('contador').textContent = '';
                 return;
             }
-            
             filtrados.slice(0, 150).forEach(item => {
                 const row = tbody.insertRow();
                 row.insertCell(0).textContent = item.loja;
                 row.insertCell(1).textContent = item.produto;
                 row.insertCell(2).textContent = item.motivo;
                 row.insertCell(3).textContent = item.tipo;
-                row.insertCell(4).textContent = item.quantidade.toFixed(2);
+                row.insertCell(4).textContent = item.kg.toFixed(2);
                 row.insertCell(5).textContent = 'R$ '+item.valor.toFixed(2);
             });
-            
-            document.getElementById('contadorRegistros').textContent = `📊 Mostrando ${Math.min(filtrados.length,150)} de ${filtrados.length} registros`;
+            document.getElementById('contador').textContent = `📊 ${filtrados.length} registros | Exibindo ${Math.min(filtrados.length,150)}`;
         }
         
-        document.getElementById('filtroTipo').addEventListener('change', () => atualizarTabela(dadosGlobais));
-        document.getElementById('filtroProduto').addEventListener('input', () => atualizarTabela(dadosGlobais));
+        document.getElementById('filtroTipo').onchange = atualizarTabela;
+        document.getElementById('filtroProd').oninput = atualizarTabela;
         
-        // Carregar dados
-        if(DADOS_FIXOS && DADOS_FIXOS !== "COLAR_DADOS_AQUI") {
-            try {
-                const dadosCarregados = JSON.parse(DADOS_FIXOS);
-                processarDados(dadosCarregados);
-                document.getElementById('dataAtualizacao').textContent = new Date().toLocaleDateString('pt-BR');
-            } catch(e) {
-                document.getElementById('tabelaBody').innerHTML = '<tr><td colspan="6" style="text-align: center;">❌ Erro ao carregar dados. Entre em contato com o administrador.</td></tr>';
+        // ============================================
+        // CARREGAR DADOS SALVOS
+        const dadosSalvos = localStorage.getItem('dashboardData');
+        if(dadosSalvos) {
+            processarDados(JSON.parse(dadosSalvos));
+            const ultimaAtualizacao = localStorage.getItem('lastUpdate');
+            if(ultimaAtualizacao) {
+                document.getElementById('dataAtualizacao').textContent = new Date(ultimaAtualizacao).toLocaleDateString('pt-BR');
             }
-        } else {
-            document.getElementById('tabelaBody').innerHTML = '<tr><td colspan="6" style="text-align: center;">📁 Nenhum dado carregado. Administrador precisa atualizar os dados.</td></tr>';
         }
     </script>
 </body>
