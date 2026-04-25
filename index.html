@@ -1,1 +1,25 @@
-# dashboard-Identificada
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard Perdas - Teste</title>
+</head>
+<body>
+    <h1>Dashboard de Perdas</h1>
+    <p>Se você está vendo esta página, o Vercel está funcionando!</p>
+    <button onclick="document.getElementById('fileInput').click()">Upload Excel</button>
+    <input type="file" id="fileInput" accept=".xlsx">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                alert('Arquivo carregado! ' + workbook.SheetNames.length + ' abas encontradas.');
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    </script>
+</body>
+</html>
