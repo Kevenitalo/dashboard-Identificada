@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Perdas - CGO</title>
+    <title>Dashboard de Perdas - CGO | Visualização</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -26,31 +26,19 @@
             padding: 30px;
             text-align: center;
         }
-        .upload-area {
-            border: 3px dashed #667eea;
-            border-radius: 15px;
-            padding: 50px;
-            text-align: center;
-            margin: 30px;
-            background: #f8f9fa;
-            cursor: pointer;
-            transition: all 0.3s;
+        .aviso-visualizacao {
+            background: #e8f4fd;
+            border-left: 4px solid #2196F3;
+            padding: 12px 20px;
+            margin: 20px 30px 0 30px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: #1976D2;
         }
-        .upload-area:hover {
-            border-color: #764ba2;
-            background: #f0e6ff;
-        }
-        .btn-upload {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 16px;
-            margin-top: 10px;
-        }
-        .dashboard { padding: 30px; display: none; }
+        .dashboard { padding: 30px; }
         .cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -63,7 +51,9 @@
             padding: 25px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             text-align: center;
+            transition: transform 0.3s;
         }
+        .card:hover { transform: translateY(-5px); }
         .card-maturacao { border-top: 4px solid #FFB347; }
         .card-avaria { border-top: 4px solid #FF6B6B; }
         .card-vencimento { border-top: 4px solid #4ECDC4; }
@@ -94,15 +84,13 @@
         th { background: #667eea; color: white; position: sticky; top: 0; }
         .filtros { margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
         .filtro-input, .filtro-select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; }
-        .btn-limpar {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            padding: 5px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
+        .atualizacao { font-size: 0.9em; opacity: 0.9; margin-top: 10px; }
         .contador { margin-top: 15px; text-align: right; font-size: 12px; color: #888; }
+        .sem-dados {
+            text-align: center;
+            padding: 60px;
+            color: #888;
+        }
         @media (max-width: 768px) {
             .graficos-grid { grid-template-columns: 1fr; }
             th, td { padding: 8px; font-size: 11px; }
@@ -114,34 +102,29 @@
         <header>
             <h1>📊 Dashboard de Perdas - CGO</h1>
             <p>Visualize as perdas por maturação, avaria e vencimento</p>
-            <div>📅 Última atualização: <span id="dataAtualizacao">--/--/----</span>
-            <button id="btnLimpar" class="btn-limpar">🗑️ Limpar</button></div>
+            <div class="atualizacao">📅 Última atualização: <span id="dataAtualizacao">--/--/----</span></div>
         </header>
 
-        <div class="upload-area" id="uploadArea">
-            <div style="font-size: 48px;">📂</div>
-            <p>Arraste o arquivo Excel aqui</p>
-            <p>ou</p>
-            <button class="btn-upload" onclick="document.getElementById('fileInput').click()">Clique para selecionar (.xlsx)</button>
-            <input type="file" id="fileInput" accept=".xlsx, .xls" style="display: none;">
+        <div class="aviso-visualizacao">
+            👁️ Modo de visualização - Dados atualizados pelo administrador
         </div>
 
         <div class="dashboard" id="dashboard">
             <div class="cards">
                 <div class="card card-maturacao">
                     <h3>🍎 Perda por Maturação</h3>
-                    <div class="valor" id="totalMaturacao">0 kg</div>
-                    <div class="sub-valor" id="valorMaturacao">R$ 0</div>
+                    <div class="valor" id="totalMaturacao">-- kg</div>
+                    <div class="sub-valor" id="valorMaturacao">R$ --</div>
                 </div>
                 <div class="card card-avaria">
                     <h3>💔 Perda por Avaria</h3>
-                    <div class="valor" id="totalAvaria">0 kg</div>
-                    <div class="sub-valor" id="valorAvaria">R$ 0</div>
+                    <div class="valor" id="totalAvaria">-- kg</div>
+                    <div class="sub-valor" id="valorAvaria">R$ --</div>
                 </div>
                 <div class="card card-vencimento">
                     <h3>⏰ Perda por Vencimento</h3>
-                    <div class="valor" id="totalVencimento">0 kg</div>
-                    <div class="sub-valor" id="valorVencimento">R$ 0</div>
+                    <div class="valor" id="totalVencimento">-- kg</div>
+                    <div class="sub-valor" id="valorVencimento">R$ --</div>
                 </div>
             </div>
 
@@ -164,7 +147,7 @@
                 </div>
                 <table id="tabelaPerdas">
                     <thead><tr><th>Loja</th><th>Produto</th><th>Motivo</th><th>Tipo</th><th>Perda (kg)</th><th>Valor (R$)</th></tr></thead>
-                    <tbody id="tabelaBody"><tr><td colspan="6" style="text-align: center;">📁 Faça upload do arquivo Excel</td></tr></tbody>
+                    <tbody id="tabelaBody"><tr><td colspan="6" style="text-align: center;">⏳ Carregando dados...</td></tr></tbody>
                 </table>
                 <div class="contador" id="contadorRegistros"></div>
             </div>
@@ -176,48 +159,6 @@
     <script>
         let charts = {};
         let dadosCompletos = [];
-
-        const fileInput = document.getElementById('fileInput');
-        const uploadArea = document.getElementById('uploadArea');
-        const dashboard = document.getElementById('dashboard');
-        const btnLimpar = document.getElementById('btnLimpar');
-
-        fileInput.addEventListener('change', (e) => { if(e.target.files[0]) processExcel(e.target.files[0]); });
-        btnLimpar.addEventListener('click', () => {
-            if(confirm('Limpar todos os dados?')) {
-                localStorage.clear();
-                location.reload();
-            }
-        });
-
-        uploadArea.addEventListener('click', () => fileInput.click());
-        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#764ba2'; });
-        uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = '#667eea'; });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#667eea';
-            const file = e.dataTransfer.files[0];
-            if(file) processExcel(file);
-        });
-
-        function processExcel(file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                let todosDados = [];
-                workbook.SheetNames.forEach(sheetName => {
-                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                    todosDados = todosDados.concat(jsonData);
-                });
-                processarDados(todosDados);
-                localStorage.setItem('dashboardData', JSON.stringify(todosDados));
-                localStorage.setItem('lastUpdate', new Date().toISOString());
-                document.getElementById('dataAtualizacao').textContent = new Date().toLocaleDateString('pt-BR');
-                alert(`✅ ${todosDados.length} registros carregados!`);
-            };
-            reader.readAsArrayBuffer(file);
-        }
 
         function processarDados(data) {
             dadosCompletos = [];
@@ -315,13 +256,14 @@
         document.getElementById('filtroTipo').addEventListener('change', atualizarTabela);
         document.getElementById('filtroProduto').addEventListener('input', atualizarTabela);
 
+        // Carregar dados salvos
         const saved = localStorage.getItem('dashboardData');
         if(saved) {
             processarDados(JSON.parse(saved));
             document.getElementById('dataAtualizacao').textContent = new Date(localStorage.getItem('lastUpdate')).toLocaleDateString('pt-BR');
+        } else {
+            document.getElementById('tabelaBody').innerHTML = '<tr><td colspan="6" style="text-align: center;">📁 Nenhum dado disponível. Aguardando atualização do administrador.</td></tr>';
         }
-        
-        dashboard.style.display = 'block';
     </script>
 </body>
 </html>
