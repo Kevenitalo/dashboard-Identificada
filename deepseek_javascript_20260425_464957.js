@@ -1,4 +1,5 @@
 let charts = {};
+let dadosCompletos = [];
 
 // Elementos DOM
 const uploadArea = document.getElementById('uploadArea');
@@ -6,10 +7,16 @@ const fileInput = document.getElementById('fileInput');
 const uploadBtn = document.getElementById('uploadBtn');
 const dashboard = document.getElementById('dashboard');
 const dataAtualizacaoSpan = document.getElementById('dataAtualizacao');
+const btnLimparDados = document.getElementById('btnLimparDados');
+const filtroProduto = document.getElementById('filtroProduto');
+const filtroTipo = document.getElementById('filtroTipo');
 
 // Configurar event listeners
 uploadBtn.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', handleFileUpload);
+btnLimparDados.addEventListener('click', limparDados);
+filtroProduto.addEventListener('input', filtrarTabela);
+filtroTipo.addEventListener('change', filtrarTabela);
 
 // Drag and drop
 uploadArea.addEventListener('dragover', (e) => {
@@ -25,10 +32,10 @@ uploadArea.addEventListener('drop', (e) => {
     e.preventDefault();
     uploadArea.classList.remove('drag-over');
     const file = e.dataTransfer.files[0];
-    if (file && file.name.endsWith('.xlsx')) {
+    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
         processExcel(file);
     } else {
-        alert('Por favor, envie um arquivo .xlsx válido');
+        alert('Por favor, envie um arquivo .xlsx ou .xls válido');
     }
 });
 
@@ -39,129 +46,148 @@ function handleFileUpload(e) {
     }
 }
 
-// Processar arquivo Excel
+function limparDados() {
+    if (confirm('Tem certeza que deseja limpar todos os dados salvos?')) {
+        localStorage.removeItem('dashboardData');
+        localStorage.removeItem('lastUpdate');
+        dadosCompletos = [];
+        dashboard.style.display = 'none';
+        uploadArea.style.display = 'block';
+        alert('Dados limpos com sucesso!');
+    }
+}
+
 function processExcel(file) {
+    mostrarLoading('Processando arquivo...');
+    
     const reader = new FileReader();
     reader.onload = function(e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        
-        // Pegar todas as abas (sheets)
-        let todosDados = [];
-        workbook.SheetNames.forEach(sheetName => {
-            const sheet = workbook.Sheets[sheetName];
-            const jsonData = XLSX.utils.sheet_to_json(sheet);
-            // Adicionar informação da aba
-            jsonData.forEach(row => {
-                row._aba = sheetName;
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            let todosDados = [];
+            workbook.SheetNames.forEach(sheetName => {
+                const sheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(sheet);
+                jsonData.forEach(row => {
+                    row._aba = sheetName;
+                });
+                todosDados = todosDados.concat(jsonData);
             });
-            todosDados = todosDados.concat(jsonData);
-        });
-        
-        processData(todosDados);
-        
-        // Salvar no localStorage
-        localStorage.setItem('dashboardData', JSON.stringify(todosDados));
-        localStorage.setItem('lastUpdate', new Date().toISOString());
-        
-        // Mostrar dashboard
-        dashboard.style.display = 'block';
-        uploadArea.style.display = 'none';
-        
-        const hoje = new Date().toLocaleDateString('pt-BR');
-        dataAtualizacaoSpan.textContent = hoje;
+            
+            processData(todosDados);
+            
+            localStorage.setItem('dashboardData', JSON.stringify(todosDados));
+            localStorage.setItem('lastUpdate', new Date().toISOString());
+            
+            dashboard.style.display = 'block';
+            uploadArea.style.display = 'none';
+            
+            const hoje = new Date().toLocaleDateString('pt-BR');
+            dataAtualizacaoSpan.textContent = hoje;
+            
+            esconderLoading();
+            alert(`✅ Processado com sucesso! ${todosDados.length} registros encontrados.`);
+        } catch (error) {
+            esconderLoading();
+            alert('Erro ao processar o arquivo. Verifique se o formato está correto.');
+            console.error(error);
+        }
     };
     reader.readAsArrayBuffer(file);
 }
 
-// Função principal de processamento
+function mostrarLoading(mensagem) {
+    let loading = document.getElementById('loading');
+    if (!loading) {
+        loading = document.createElement('div');
+        loading.id = 'loading';
+        loading.className = 'loading';
+        loading.innerHTML = mensagem;
+        document.body.appendChild(loading);
+    } else {
+        loading.innerHTML = mensagem;
+        loading.style.display = 'block';
+    }
+}
+
+function esconderLoading() {
+    const loading = document.getElementById('loading');
+    if (loading) loading.style.display = 'none';
+}
+
 function processData(data) {
+    dadosCompletos = [];
+    
     let perdasMaturacao = 0;
     let perdasAvaria = 0;
     let perdasVencimento = 0;
-    let perdasOutros = 0;
-    let valorTotalPerdas = 0;
-    let detalhes = [];
+    let valorMaturacao = 0;
+    let valorAvaria = 0;
+    let valorVencimento = 0;
     
-    // Estatísticas por loja
     let perdasPorLoja = {};
     let perdasPorProduto = {};
     let perdasPorMotivo = {};
     
     data.forEach(row => {
-        // Mapear colunas do seu Excel
         const loja = row['Loja'] || 'Não especificada';
-        const produto = row['Produto'] || row['Produto'] || 'Não especificado';
+        const produto = (row['Produto'] || row['produto'] || 'Não especificado').toString();
         const descMotivo = row['Desc. Motivo'] || '';
-        const quantidade = Math.abs(parseFloat(row['Quantidade'] || row['Quantidade'] || 0));
-        const peso = Math.abs(parseFloat(row['Peso (Kg)'] || row['Peso (Kg)'] || 0));
-        const valor = Math.abs(parseFloat(row['Valor'] || row['Valor'] || 0));
-        const tipoMov = row['Tipo Mov'] || '';
-        const descricao = row['Descrição'] || '';
+        const peso = Math.abs(parseFloat(row['Peso (Kg)'] || row['peso'] || 0));
+        const quantidade = Math.abs(parseFloat(row['Quantidade'] || 0));
+        const valor = Math.abs(parseFloat(row['Valor'] || 0));
         
-        // Usar peso como principal (já que tem coluna específica)
         const qtdPerda = peso > 0 ? peso : quantidade;
         
-        // Classificar tipo de perda baseado no "Desc. Motivo"
         let tipo = 'Outros';
         if (descMotivo.toLowerCase().includes('maturação')) {
             tipo = 'Maturação';
             perdasMaturacao += qtdPerda;
+            valorMaturacao += valor;
         } else if (descMotivo.toLowerCase().includes('avaria')) {
             tipo = 'Avaria';
             perdasAvaria += qtdPerda;
+            valorAvaria += valor;
         } else if (descMotivo.toLowerCase().includes('vencimento')) {
             tipo = 'Vencimento';
             perdasVencimento += qtdPerda;
-        } else {
-            perdasOutros += qtdPerda;
+            valorVencimento += valor;
         }
         
-        valorTotalPerdas += valor;
-        
-        // Acumular por loja
         if (!perdasPorLoja[loja]) perdasPorLoja[loja] = 0;
         perdasPorLoja[loja] += qtdPerda;
         
-        // Acumular por produto
-        const nomeProduto = String(produto).substring(0, 40);
+        const nomeProduto = produto.length > 40 ? produto.substring(0, 40) + '...' : produto;
         if (!perdasPorProduto[nomeProduto]) perdasPorProduto[nomeProduto] = 0;
         perdasPorProduto[nomeProduto] += qtdPerda;
         
-        // Acumular por motivo detalhado
-        const motivoChave = descMotivo.split(' - ')[0] || descMotivo;
+        const motivoChave = descMotivo.split(' - ')[0] || descMotivo || 'Sem motivo';
         if (!perdasPorMotivo[motivoChave]) perdasPorMotivo[motivoChave] = 0;
         perdasPorMotivo[motivoChave] += qtdPerda;
         
-        // Adicionar aos detalhes para tabela
         if (qtdPerda > 0) {
-            detalhes.push({
+            dadosCompletos.push({
                 loja,
                 produto: nomeProduto,
-                descMotivo,
+                descMotivo: descMotivo || 'Não informado',
                 tipo,
                 quantidade: qtdPerda,
-                peso,
-                valor,
-                tipoMov,
-                descricao
+                valor
             });
         }
     });
     
-    // Atualizar cards
     document.getElementById('totalMaturacao').textContent = formatarNumero(perdasMaturacao);
     document.getElementById('totalAvaria').textContent = formatarNumero(perdasAvaria);
     document.getElementById('totalVencimento').textContent = formatarNumero(perdasVencimento);
+    document.getElementById('valorMaturacao').textContent = `R$ ${valorMaturacao.toFixed(2)}`;
+    document.getElementById('valorAvaria').textContent = `R$ ${valorAvaria.toFixed(2)}`;
+    document.getElementById('valorVencimento').textContent = `R$ ${valorVencimento.toFixed(2)}`;
     
-    // Adicionar card de resumo
-    adicionarCardsResumo(perdasMaturacao, perdasAvaria, perdasVencimento, perdasOutros, valorTotalPerdas);
-    
-    // Atualizar tabela
-    updateTabela(detalhes);
-    
-    // Criar gráficos
-    createCharts(perdasMaturacao, perdasAvaria, perdasVencimento, perdasPorLoja, perdasPorProduto, perdasPorMotivo);
+    criarGraficos(perdasMaturacao, perdasAvaria, perdasVencimento, perdasPorLoja, perdasPorProduto, perdasPorMotivo);
+    atualizarTabela();
 }
 
 function formatarNumero(valor) {
@@ -171,63 +197,12 @@ function formatarNumero(valor) {
     return valor.toFixed(1) + ' kg';
 }
 
-function adicionarCardsResumo(maturacao, avaria, vencimento, outros, valorTotal) {
-    const cardsContainer = document.querySelector('.cards');
-    
-    // Card de total geral
-    let totalCard = document.getElementById('cardTotal');
-    if (!totalCard) {
-        totalCard = document.createElement('div');
-        totalCard.className = 'card';
-        totalCard.id = 'cardTotal';
-        totalCard.innerHTML = `
-            <h3>📦 Total de Perdas</h3>
-            <div class="valor" id="totalPerdas">${(maturacao + avaria + vencimento + outros).toFixed(1)} kg</div>
-            <div class="valor-pequeno">💰 R$ ${valorTotal.toFixed(2)}</div>
-        `;
-        cardsContainer.appendChild(totalCard);
-    } else {
-        document.getElementById('totalPerdas').textContent = (maturacao + avaria + vencimento + outros).toFixed(1) + ' kg';
-    }
-}
-
-// Tabela de detalhes
-function updateTabela(detalhes) {
-    const tbody = document.getElementById('tabelaBody');
-    tbody.innerHTML = '';
-    
-    // Ordenar por quantidade (maiores perdas primeiro)
-    detalhes.sort((a, b) => b.quantidade - a.quantidade);
-    
-    // Mostrar top 100 registros
-    detalhes.slice(0, 100).forEach(item => {
-        const row = tbody.insertRow();
-        row.insertCell(0).textContent = item.loja;
-        row.insertCell(1).textContent = item.produto;
-        row.insertCell(2).textContent = item.descMotivo;
-        row.insertCell(3).textContent = item.tipo;
-        row.insertCell(4).textContent = item.quantidade.toFixed(2);
-        row.insertCell(5).textContent = item.peso > 0 ? item.peso.toFixed(2) : '-';
-        row.insertCell(6).textContent = item.valor > 0 ? 'R$ ' + item.valor.toFixed(2) : '-';
-        
-        // Adicionar classe de cor conforme tipo
-        if (item.tipo === 'Maturação') row.style.borderLeft = '4px solid #FFB347';
-        else if (item.tipo === 'Avaria') row.style.borderLeft = '4px solid #FF6B6B';
-        else if (item.tipo === 'Vencimento') row.style.borderLeft = '4px solid #4ECDC4';
-    });
-    
-    if (detalhes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Nenhum dado encontrado. Faça upload do arquivo Excel.</td></tr>';
-    }
-}
-
-// Gráficos
-function createCharts(maturacao, avaria, vencimento, perdasPorLoja, perdasPorProduto, perdasPorMotivo) {
-    // Gráfico 1: Comparativo por tipo (Pizza)
-    const ctxComparativo = document.getElementById('chartComparativo');
-    if (ctxComparativo) {
+function criarGraficos(maturacao, avaria, vencimento, perdasPorLoja, perdasPorProduto, perdasPorMotivo) {
+    // Gráfico comparativo
+    const ctxComp = document.getElementById('chartComparativo');
+    if (ctxComp) {
         if (charts.comparativo) charts.comparativo.destroy();
-        charts.comparativo = new Chart(ctxComparativo, {
+        charts.comparativo = new Chart(ctxComp, {
             type: 'pie',
             data: {
                 labels: ['Maturação', 'Avaria', 'Vencimento'],
@@ -239,6 +214,7 @@ function createCharts(maturacao, avaria, vencimento, perdasPorLoja, perdasPorPro
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: true,
                 plugins: {
                     legend: { position: 'bottom' },
                     tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.raw.toFixed(1)} kg` } }
@@ -247,22 +223,20 @@ function createCharts(maturacao, avaria, vencimento, perdasPorLoja, perdasPorPro
         });
     }
     
-    // Gráfico 2: Perdas por Loja (Barras)
-    const lojasOrdenadas = Object.entries(perdasPorLoja)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 8);
-    
+    // Gráfico por loja
+    const lojasOrdenadas = Object.entries(perdasPorLoja).sort((a, b) => b[1] - a[1]).slice(0, 8);
     const ctxLojas = document.getElementById('chartLojas');
     if (ctxLojas) {
         if (charts.lojas) charts.lojas.destroy();
         charts.lojas = new Chart(ctxLojas, {
             type: 'bar',
             data: {
-                labels: lojasOrdenadas.map(l => l[0].substring(0, 15)),
+                labels: lojasOrdenadas.map(l => l[0].length > 15 ? l[0].substring(0, 15) + '...' : l[0]),
                 datasets: [{
                     label: 'Perda (kg)',
                     data: lojasOrdenadas.map(l => l[1]),
-                    backgroundColor: '#667eea'
+                    backgroundColor: '#667eea',
+                    borderRadius: 8
                 }]
             },
             options: {
@@ -273,22 +247,20 @@ function createCharts(maturacao, avaria, vencimento, perdasPorLoja, perdasPorPro
         });
     }
     
-    // Gráfico 3: Top Produtos com maior perda
-    const produtosOrdenados = Object.entries(perdasPorProduto)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10);
-    
+    // Gráfico por produto
+    const produtosOrdenados = Object.entries(perdasPorProduto).sort((a, b) => b[1] - a[1]).slice(0, 10);
     const ctxProdutos = document.getElementById('chartProdutos');
     if (ctxProdutos) {
         if (charts.produtos) charts.produtos.destroy();
         charts.produtos = new Chart(ctxProdutos, {
             type: 'bar',
             data: {
-                labels: produtosOrdenados.map(p => p[0].substring(0, 20)),
+                labels: produtosOrdenados.map(p => p[0].length > 20 ? p[0].substring(0, 20) + '...' : p[0]),
                 datasets: [{
                     label: 'Perda (kg)',
                     data: produtosOrdenados.map(p => p[1]),
-                    backgroundColor: '#764ba2'
+                    backgroundColor: '#764ba2',
+                    borderRadius: 8
                 }]
             },
             options: {
@@ -299,18 +271,15 @@ function createCharts(maturacao, avaria, vencimento, perdasPorLoja, perdasPorPro
         });
     }
     
-    // Gráfico 4: Top Motivos de perda
-    const motivosOrdenados = Object.entries(perdasPorMotivo)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 8);
-    
+    // Gráfico por motivo
+    const motivosOrdenados = Object.entries(perdasPorMotivo).sort((a, b) => b[1] - a[1]).slice(0, 8);
     const ctxMotivos = document.getElementById('chartMotivos');
     if (ctxMotivos) {
         if (charts.motivos) charts.motivos.destroy();
         charts.motivos = new Chart(ctxMotivos, {
             type: 'pie',
             data: {
-                labels: motivosOrdenados.map(m => m[0]),
+                labels: motivosOrdenados.map(m => m[0].length > 20 ? m[0].substring(0, 20) + '...' : m[0]),
                 datasets: [{
                     data: motivosOrdenados.map(m => m[1]),
                     backgroundColor: ['#FFB347', '#FF6B6B', '#4ECDC4', '#95A5A6', '#3498DB', '#E74C3C', '#2ECC71', '#F39C12']
@@ -318,13 +287,60 @@ function createCharts(maturacao, avaria, vencimento, perdasPorLoja, perdasPorPro
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: true,
                 plugins: { legend: { position: 'right' } }
             }
         });
     }
 }
 
-// Carregar dados salvos
+function atualizarTabela() {
+    const tipoSelecionado = filtroTipo.value;
+    const textoFiltro = filtroProduto.value.toLowerCase();
+    
+    let dadosFiltrados = dadosCompletos;
+    
+    if (tipoSelecionado !== 'todos') {
+        dadosFiltrados = dadosFiltrados.filter(d => d.tipo === tipoSelecionado);
+    }
+    
+    if (textoFiltro) {
+        dadosFiltrados = dadosFiltrados.filter(d => 
+            d.produto.toLowerCase().includes(textoFiltro) || 
+            d.descMotivo.toLowerCase().includes(textoFiltro)
+        );
+    }
+    
+    dadosFiltrados.sort((a, b) => b.quantidade - a.quantidade);
+    
+    const tbody = document.getElementById('tabelaBody');
+    tbody.innerHTML = '';
+    
+    if (dadosFiltrados.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">📁 Nenhum registro encontrado</td></tr>';
+        document.getElementById('contadorRegistros').textContent = '';
+        return;
+    }
+    
+    dadosFiltrados.slice(0, 200).forEach(item => {
+        const row = tbody.insertRow();
+        row.className = `tipo-${item.tipo.toLowerCase()}`;
+        row.insertCell(0).textContent = item.loja;
+        row.insertCell(1).textContent = item.produto;
+        row.insertCell(2).textContent = item.descMotivo;
+        row.insertCell(3).textContent = item.tipo;
+        row.insertCell(4).textContent = item.quantidade.toFixed(2);
+        row.insertCell(5).textContent = `R$ ${item.valor.toFixed(2)}`;
+    });
+    
+    document.getElementById('contadorRegistros').textContent = 
+        `Mostrando ${Math.min(dadosFiltrados.length, 200)} de ${dadosFiltrados.length} registros`;
+}
+
+function filtrarTabela() {
+    atualizarTabela();
+}
+
 function loadSavedData() {
     const savedData = localStorage.getItem('dashboardData');
     if (savedData) {
