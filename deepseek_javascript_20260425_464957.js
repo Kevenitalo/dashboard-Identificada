@@ -14,30 +14,32 @@ const filtroTipo = document.getElementById('filtroTipo');
 // Configurar event listeners
 uploadBtn.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', handleFileUpload);
-btnLimparDados.addEventListener('click', limparDados);
-filtroProduto.addEventListener('input', filtrarTabela);
-filtroTipo.addEventListener('change', filtrarTabela);
+if (btnLimparDados) btnLimparDados.addEventListener('click', limparDados);
+if (filtroProduto) filtroProduto.addEventListener('input', filtrarTabela);
+if (filtroTipo) filtroTipo.addEventListener('change', filtrarTabela);
 
 // Drag and drop
-uploadArea.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    uploadArea.classList.add('drag-over');
-});
+if (uploadArea) {
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('drag-over');
+    });
 
-uploadArea.addEventListener('dragleave', () => {
-    uploadArea.classList.remove('drag-over');
-});
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('drag-over');
+    });
 
-uploadArea.addEventListener('drop', (e) => {
-    e.preventDefault();
-    uploadArea.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
-        processExcel(file);
-    } else {
-        alert('Por favor, envie um arquivo .xlsx ou .xls válido');
-    }
-});
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+            processExcel(file);
+        } else {
+            alert('Por favor, envie um arquivo .xlsx ou .xls válido');
+        }
+    });
+}
 
 function handleFileUpload(e) {
     const file = e.target.files[0];
@@ -57,9 +59,23 @@ function limparDados() {
     }
 }
 
+// Função para encontrar coluna por sinônimos
+function encontrarColuna(row, possiveisNomes) {
+    for (let nome of possiveisNomes) {
+        if (row.hasOwnProperty(nome)) {
+            return nome;
+        }
+        // Também procura case insensitive
+        for (let key in row) {
+            if (key.toLowerCase() === nome.toLowerCase()) {
+                return key;
+            }
+        }
+    }
+    return null;
+}
+
 function processExcel(file) {
-    mostrarLoading('Processando arquivo...');
-    
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
@@ -76,6 +92,9 @@ function processExcel(file) {
                 todosDados = todosDados.concat(jsonData);
             });
             
+            console.log('Primeira linha do arquivo:', todosDados[0]);
+            console.log('Colunas encontradas:', Object.keys(todosDados[0] || {}));
+            
             processData(todosDados);
             
             localStorage.setItem('dashboardData', JSON.stringify(todosDados));
@@ -87,34 +106,13 @@ function processExcel(file) {
             const hoje = new Date().toLocaleDateString('pt-BR');
             dataAtualizacaoSpan.textContent = hoje;
             
-            esconderLoading();
-            alert(`✅ Processado com sucesso! ${todosDados.length} registros encontrados.`);
+            alert(`✅ Processado! ${todosDados.length} registros encontrados.`);
         } catch (error) {
-            esconderLoading();
-            alert('Erro ao processar o arquivo. Verifique se o formato está correto.');
+            alert('Erro ao processar o arquivo: ' + error.message);
             console.error(error);
         }
     };
     reader.readAsArrayBuffer(file);
-}
-
-function mostrarLoading(mensagem) {
-    let loading = document.getElementById('loading');
-    if (!loading) {
-        loading = document.createElement('div');
-        loading.id = 'loading';
-        loading.className = 'loading';
-        loading.innerHTML = mensagem;
-        document.body.appendChild(loading);
-    } else {
-        loading.innerHTML = mensagem;
-        loading.style.display = 'block';
-    }
-}
-
-function esconderLoading() {
-    const loading = document.getElementById('loading');
-    if (loading) loading.style.display = 'none';
 }
 
 function processData(data) {
@@ -131,31 +129,63 @@ function processData(data) {
     let perdasPorProduto = {};
     let perdasPorMotivo = {};
     
+    // Primeira linha para identificar colunas
+    const primeiraLinha = data[0] || {};
+    
+    // Mapear colunas (aceita vários nomes)
+    const colLoja = encontrarColuna(primeiraLinha, ['Loja', 'LOJA', 'loja', 'FILIAL', 'Filial']);
+    const colProduto = encontrarColuna(primeiraLinha, ['Produto', 'PRODUTO', 'produto', 'ITEM', 'Item', 'DESCRICAO', 'Descricao']);
+    const colMotivo = encontrarColuna(primeiraLinha, ['Desc. Motivo', 'Desc Motivo', 'MOTIVO', 'Motivo', 'TIPO', 'Tipo']);
+    const colPeso = encontrarColuna(primeiraLinha, ['Peso (Kg)', 'Peso', 'peso', 'KG', 'Kg']);
+    const colQuantidade = encontrarColuna(primeiraLinha, ['Quantidade', 'quantidade', 'QTD', 'Qtd']);
+    const colValor = encontrarColuna(primeiraLinha, ['Valor', 'valor', 'VALOR', 'R$', 'Vlr']);
+    
+    console.log('Colunas mapeadas:', { colLoja, colProduto, colMotivo, colPeso, colQuantidade, colValor });
+    
     data.forEach(row => {
-        const loja = row['Loja'] || 'Não especificada';
-        const produto = (row['Produto'] || row['produto'] || 'Não especificado').toString();
-        const descMotivo = row['Desc. Motivo'] || '';
-        const peso = Math.abs(parseFloat(row['Peso (Kg)'] || row['peso'] || 0));
-        const quantidade = Math.abs(parseFloat(row['Quantidade'] || 0));
-        const valor = Math.abs(parseFloat(row['Valor'] || 0));
+        // Extrair valores usando as colunas encontradas
+        const loja = colLoja ? (row[colLoja] || 'Não especificada').toString() : 'Não especificada';
+        const produto = colProduto ? (row[colProduto] || 'Não especificado').toString() : 'Não especificado';
+        let descMotivo = colMotivo ? (row[colMotivo] || '').toString() : '';
         
-        const qtdPerda = peso > 0 ? peso : quantidade;
+        // Se não achou Desc. Motivo, tenta outras colunas
+        if (!descMotivo) {
+            for (let key in row) {
+                if (key.toLowerCase().includes('motivo') || key.toLowerCase().includes('tipo')) {
+                    descMotivo = row[key] || '';
+                    break;
+                }
+            }
+        }
         
+        // Peso ou Quantidade
+        let peso = 0;
+        if (colPeso) peso = Math.abs(parseFloat(row[colPeso]) || 0);
+        if (peso === 0 && colQuantidade) peso = Math.abs(parseFloat(row[colQuantidade]) || 0);
+        
+        const valor = colValor ? Math.abs(parseFloat(row[colValor]) || 0) : 0;
+        
+        const qtdPerda = peso;
+        
+        // Classificar tipo
         let tipo = 'Outros';
-        if (descMotivo.toLowerCase().includes('maturação')) {
+        const textoMotivo = descMotivo.toLowerCase();
+        
+        if (textoMotivo.includes('maturação') || textoMotivo.includes('maturacao')) {
             tipo = 'Maturação';
             perdasMaturacao += qtdPerda;
             valorMaturacao += valor;
-        } else if (descMotivo.toLowerCase().includes('avaria')) {
+        } else if (textoMotivo.includes('avaria')) {
             tipo = 'Avaria';
             perdasAvaria += qtdPerda;
             valorAvaria += valor;
-        } else if (descMotivo.toLowerCase().includes('vencimento')) {
+        } else if (textoMotivo.includes('vencimento')) {
             tipo = 'Vencimento';
             perdasVencimento += qtdPerda;
             valorVencimento += valor;
         }
         
+        // Acumular estatísticas
         if (!perdasPorLoja[loja]) perdasPorLoja[loja] = 0;
         perdasPorLoja[loja] += qtdPerda;
         
@@ -167,7 +197,8 @@ function processData(data) {
         if (!perdasPorMotivo[motivoChave]) perdasPorMotivo[motivoChave] = 0;
         perdasPorMotivo[motivoChave] += qtdPerda;
         
-        if (qtdPerda > 0) {
+        // Adicionar aos detalhes
+        if (qtdPerda > 0 && tipo !== 'Outros') {
             dadosCompletos.push({
                 loja,
                 produto: nomeProduto,
@@ -179,12 +210,20 @@ function processData(data) {
         }
     });
     
-    document.getElementById('totalMaturacao').textContent = formatarNumero(perdasMaturacao);
-    document.getElementById('totalAvaria').textContent = formatarNumero(perdasAvaria);
-    document.getElementById('totalVencimento').textContent = formatarNumero(perdasVencimento);
-    document.getElementById('valorMaturacao').textContent = `R$ ${valorMaturacao.toFixed(2)}`;
-    document.getElementById('valorAvaria').textContent = `R$ ${valorAvaria.toFixed(2)}`;
-    document.getElementById('valorVencimento').textContent = `R$ ${valorVencimento.toFixed(2)}`;
+    // Atualizar cards
+    const totalMaturacaoEl = document.getElementById('totalMaturacao');
+    const totalAvariaEl = document.getElementById('totalAvaria');
+    const totalVencimentoEl = document.getElementById('totalVencimento');
+    const valorMaturacaoEl = document.getElementById('valorMaturacao');
+    const valorAvariaEl = document.getElementById('valorAvaria');
+    const valorVencimentoEl = document.getElementById('valorVencimento');
+    
+    if (totalMaturacaoEl) totalMaturacaoEl.textContent = formatarNumero(perdasMaturacao);
+    if (totalAvariaEl) totalAvariaEl.textContent = formatarNumero(perdasAvaria);
+    if (totalVencimentoEl) totalVencimentoEl.textContent = formatarNumero(perdasVencimento);
+    if (valorMaturacaoEl) valorMaturacaoEl.textContent = `R$ ${valorMaturacao.toFixed(2)}`;
+    if (valorAvariaEl) valorAvariaEl.textContent = `R$ ${valorAvaria.toFixed(2)}`;
+    if (valorVencimentoEl) valorVencimentoEl.textContent = `R$ ${valorVencimento.toFixed(2)}`;
     
     criarGraficos(perdasMaturacao, perdasAvaria, perdasVencimento, perdasPorLoja, perdasPorProduto, perdasPorMotivo);
     atualizarTabela();
@@ -200,7 +239,7 @@ function formatarNumero(valor) {
 function criarGraficos(maturacao, avaria, vencimento, perdasPorLoja, perdasPorProduto, perdasPorMotivo) {
     // Gráfico comparativo
     const ctxComp = document.getElementById('chartComparativo');
-    if (ctxComp) {
+    if (ctxComp && (maturacao > 0 || avaria > 0 || vencimento > 0)) {
         if (charts.comparativo) charts.comparativo.destroy();
         charts.comparativo = new Chart(ctxComp, {
             type: 'pie',
@@ -215,10 +254,7 @@ function criarGraficos(maturacao, avaria, vencimento, perdasPorLoja, perdasPorPr
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
-                plugins: {
-                    legend: { position: 'bottom' },
-                    tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.raw.toFixed(1)} kg` } }
-                }
+                plugins: { legend: { position: 'bottom' } }
             }
         });
     }
@@ -226,7 +262,7 @@ function criarGraficos(maturacao, avaria, vencimento, perdasPorLoja, perdasPorPr
     // Gráfico por loja
     const lojasOrdenadas = Object.entries(perdasPorLoja).sort((a, b) => b[1] - a[1]).slice(0, 8);
     const ctxLojas = document.getElementById('chartLojas');
-    if (ctxLojas) {
+    if (ctxLojas && lojasOrdenadas.length > 0) {
         if (charts.lojas) charts.lojas.destroy();
         charts.lojas = new Chart(ctxLojas, {
             type: 'bar',
@@ -239,18 +275,14 @@ function criarGraficos(maturacao, avaria, vencimento, perdasPorLoja, perdasPorPr
                     borderRadius: 8
                 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: { legend: { position: 'top' } }
-            }
+            options: { responsive: true, maintainAspectRatio: true }
         });
     }
     
     // Gráfico por produto
     const produtosOrdenados = Object.entries(perdasPorProduto).sort((a, b) => b[1] - a[1]).slice(0, 10);
     const ctxProdutos = document.getElementById('chartProdutos');
-    if (ctxProdutos) {
+    if (ctxProdutos && produtosOrdenados.length > 0) {
         if (charts.produtos) charts.produtos.destroy();
         charts.produtos = new Chart(ctxProdutos, {
             type: 'bar',
@@ -263,40 +295,17 @@ function criarGraficos(maturacao, avaria, vencimento, perdasPorLoja, perdasPorPr
                     borderRadius: 8
                 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                indexAxis: 'y'
-            }
-        });
-    }
-    
-    // Gráfico por motivo
-    const motivosOrdenados = Object.entries(perdasPorMotivo).sort((a, b) => b[1] - a[1]).slice(0, 8);
-    const ctxMotivos = document.getElementById('chartMotivos');
-    if (ctxMotivos) {
-        if (charts.motivos) charts.motivos.destroy();
-        charts.motivos = new Chart(ctxMotivos, {
-            type: 'pie',
-            data: {
-                labels: motivosOrdenados.map(m => m[0].length > 20 ? m[0].substring(0, 20) + '...' : m[0]),
-                datasets: [{
-                    data: motivosOrdenados.map(m => m[1]),
-                    backgroundColor: ['#FFB347', '#FF6B6B', '#4ECDC4', '#95A5A6', '#3498DB', '#E74C3C', '#2ECC71', '#F39C12']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: { legend: { position: 'right' } }
-            }
+            options: { responsive: true, maintainAspectRatio: true, indexAxis: 'y' }
         });
     }
 }
 
 function atualizarTabela() {
-    const tipoSelecionado = filtroTipo.value;
-    const textoFiltro = filtroProduto.value.toLowerCase();
+    const tbody = document.getElementById('tabelaBody');
+    if (!tbody) return;
+    
+    const tipoSelecionado = filtroTipo ? filtroTipo.value : 'todos';
+    const textoFiltro = filtroProduto ? filtroProduto.value.toLowerCase() : '';
     
     let dadosFiltrados = dadosCompletos;
     
@@ -313,18 +322,17 @@ function atualizarTabela() {
     
     dadosFiltrados.sort((a, b) => b.quantidade - a.quantidade);
     
-    const tbody = document.getElementById('tabelaBody');
     tbody.innerHTML = '';
     
     if (dadosFiltrados.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">📁 Nenhum registro encontrado</td></tr>';
-        document.getElementById('contadorRegistros').textContent = '';
+        const contador = document.getElementById('contadorRegistros');
+        if (contador) contador.textContent = '';
         return;
     }
     
     dadosFiltrados.slice(0, 200).forEach(item => {
         const row = tbody.insertRow();
-        row.className = `tipo-${item.tipo.toLowerCase()}`;
         row.insertCell(0).textContent = item.loja;
         row.insertCell(1).textContent = item.produto;
         row.insertCell(2).textContent = item.descMotivo;
@@ -333,8 +341,10 @@ function atualizarTabela() {
         row.insertCell(5).textContent = `R$ ${item.valor.toFixed(2)}`;
     });
     
-    document.getElementById('contadorRegistros').textContent = 
-        `Mostrando ${Math.min(dadosFiltrados.length, 200)} de ${dadosFiltrados.length} registros`;
+    const contador = document.getElementById('contadorRegistros');
+    if (contador) {
+        contador.textContent = `Mostrando ${Math.min(dadosFiltrados.length, 200)} de ${dadosFiltrados.length} registros`;
+    }
 }
 
 function filtrarTabela() {
@@ -350,7 +360,7 @@ function loadSavedData() {
         uploadArea.style.display = 'none';
         
         const lastUpdate = localStorage.getItem('lastUpdate');
-        if (lastUpdate) {
+        if (lastUpdate && dataAtualizacaoSpan) {
             const dataUp = new Date(lastUpdate).toLocaleDateString('pt-BR');
             dataAtualizacaoSpan.textContent = dataUp;
         }
