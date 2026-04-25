@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Dashboard de Perdas | Atualização</title>
+    <title>Dashboard de Perdas - CGO</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -26,27 +26,26 @@
             padding: 30px;
             text-align: center;
         }
-        .aviso-admin {
-            background: #fff3e0;
-            border-left: 4px solid #FF9800;
-            padding: 12px 20px;
-            margin: 20px 30px 0 30px;
-            border-radius: 8px;
+        .modo-buttons {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 10px;
-            font-size: 14px;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
         }
-        .btn-link {
-            background: #FF9800;
+        .modo-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
             color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
+            padding: 8px 20px;
+            border-radius: 25px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .modo-btn.ativo {
+            background: white;
+            color: #667eea;
+            border-color: white;
         }
         .upload-area {
             border: 3px dashed #667eea;
@@ -69,7 +68,7 @@
             font-size: 16px;
             margin-top: 10px;
         }
-        .dashboard { padding: 30px; display: none; }
+        .dashboard { padding: 30px; }
         .cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -87,6 +86,7 @@
         .card-avaria { border-top: 4px solid #FF6B6B; }
         .card-vencimento { border-top: 4px solid #4ECDC4; }
         .valor { font-size: 2.5em; font-weight: bold; color: #667eea; margin: 10px 0; }
+        .sub-valor { font-size: 0.9em; color: #666; }
         .graficos-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
@@ -119,7 +119,16 @@
             padding: 8px 16px;
             border-radius: 8px;
             cursor: pointer;
-            margin-left: 10px;
+        }
+        .aviso { 
+            background: #e8f4fd; 
+            padding: 10px 20px; 
+            margin: 0 30px; 
+            border-radius: 8px;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .contador { margin-top: 15px; text-align: right; font-size: 12px; color: #888; }
         @media (max-width: 768px) {
@@ -130,31 +139,47 @@
 <body>
     <div class="container">
         <header>
-            <h1>🔐 Admin - Dashboard de Perdas</h1>
-            <p>Área restrita para atualização dos dados</p>
-            <div>📅 Última atualização: <span id="dataAtualizacao">--/--/----</span></div>
+            <h1>📊 Dashboard de Perdas - CGO</h1>
+            <p>Visualize as perdas por maturação, avaria e vencimento</p>
+            <div class="modo-buttons">
+                <button id="btnModoVisualizacao" class="modo-btn ativo">👁️ Visualização</button>
+                <button id="btnModoAdmin" class="modo-btn">🔐 Admin (Upload)</button>
+            </div>
+            <div class="aviso" id="avisoArea">
+                <span>👁️ Modo de visualização ativo</span>
+                <span>📅 Última atualização: <span id="dataAtualizacao">--/--/----</span></span>
+            </div>
         </header>
 
-        <div class="aviso-admin">
-            <span>🔒 Você está na área administrativa. Aqui você pode atualizar os dados.</span>
-            <button class="btn-link" onclick="copiarLinkVisualizacao()">📋 Copiar link para membros</button>
-        </div>
-
-        <div class="upload-area" id="uploadArea">
-            <div style="font-size: 48px;">📂</div>
-            <p>Arraste o arquivo Excel aqui</p>
-            <p>ou</p>
-            <button class="btn-upload" onclick="document.getElementById('fileInput').click()">Clique para selecionar (.xlsx)</button>
-            <input type="file" id="fileInput" accept=".xlsx, .xls" style="display: none;">
-            <button id="btnLimpar" class="btn-limpar" style="margin-top: 15px;">🗑️ Limpar todos os dados</button>
-            <p style="margin-top: 15px; font-size: 12px; color: #888;">⚠️ Após o upload, os membros verão os novos dados automaticamente</p>
+        <div id="uploadArea" style="display: none;">
+            <div class="upload-area" id="dropArea">
+                <div style="font-size: 48px;">📂</div>
+                <p>Arraste o arquivo Excel aqui</p>
+                <p>ou</p>
+                <button class="btn-upload" onclick="document.getElementById('fileInput').click()">Clique para selecionar (.xlsx)</button>
+                <input type="file" id="fileInput" accept=".xlsx, .xls" style="display: none;">
+                <button id="btnLimparDados" class="btn-limpar" style="margin-top: 15px;">🗑️ Limpar todos os dados</button>
+                <p style="margin-top: 15px; font-size: 12px; color: #888;">⚠️ Após o upload, os dados são salvos no navegador</p>
+            </div>
         </div>
 
         <div class="dashboard" id="dashboard">
             <div class="cards">
-                <div class="card card-maturacao"><h3>🍎 Perda por Maturação</h3><div class="valor" id="totalMaturacao">0 kg</div></div>
-                <div class="card card-avaria"><h3>💔 Perda por Avaria</h3><div class="valor" id="totalAvaria">0 kg</div></div>
-                <div class="card card-vencimento"><h3>⏰ Perda por Vencimento</h3><div class="valor" id="totalVencimento">0 kg</div></div>
+                <div class="card card-maturacao">
+                    <h3>🍎 Perda por Maturação</h3>
+                    <div class="valor" id="totalMaturacao">-- kg</div>
+                    <div class="sub-valor" id="valorMaturacao">R$ --</div>
+                </div>
+                <div class="card card-avaria">
+                    <h3>💔 Perda por Avaria</h3>
+                    <div class="valor" id="totalAvaria">-- kg</div>
+                    <div class="sub-valor" id="valorAvaria">R$ --</div>
+                </div>
+                <div class="card card-vencimento">
+                    <h3>⏰ Perda por Vencimento</h3>
+                    <div class="valor" id="totalVencimento">-- kg</div>
+                    <div class="sub-valor" id="valorVencimento">R$ --</div>
+                </div>
             </div>
 
             <div class="graficos-grid">
@@ -176,7 +201,7 @@
                 </div>
                 <table id="tabelaPerdas">
                     <thead><tr><th>Loja</th><th>Produto</th><th>Motivo</th><th>Tipo</th><th>Perda (kg)</th><th>Valor (R$)</th></tr></thead>
-                    <tbody id="tabelaBody"></tbody>
+                    <tbody id="tabelaBody"><tr><td colspan="6" style="text-align: center;">📁 Nenhum dado carregado. Ative o modo Admin e faça upload.</td></tr></tr></tbody>
                 </table>
                 <div class="contador" id="contadorRegistros"></div>
             </div>
@@ -188,36 +213,57 @@
     <script>
         let charts = {};
         let dadosCompletos = [];
+        let modoAdmin = false;
 
+        // Elementos
+        const btnVisualizacao = document.getElementById('btnModoVisualizacao');
+        const btnAdmin = document.getElementById('btnModoAdmin');
+        const uploadAreaDiv = document.getElementById('uploadArea');
+        const avisoArea = document.getElementById('avisoArea');
         const fileInput = document.getElementById('fileInput');
-        const uploadArea = document.getElementById('uploadArea');
-        const dashboard = document.getElementById('dashboard');
-        const btnLimpar = document.getElementById('btnLimpar');
+        const dropArea = document.getElementById('dropArea');
+        const btnLimpar = document.getElementById('btnLimparDados');
+
+        // Alternar entre modos
+        btnVisualizacao.addEventListener('click', () => {
+            modoAdmin = false;
+            btnVisualizacao.classList.add('ativo');
+            btnAdmin.classList.remove('ativo');
+            uploadAreaDiv.style.display = 'none';
+            avisoArea.innerHTML = '<span>👁️ Modo de visualização ativo - Apenas leitura</span><span>📅 Última atualização: <span id="dataAtualizacao2">--/--/----</span></span>';
+            document.getElementById('dataAtualizacao2').textContent = document.getElementById('dataAtualizacao').textContent;
+        });
+
+        btnAdmin.addEventListener('click', () => {
+            modoAdmin = true;
+            btnAdmin.classList.add('ativo');
+            btnVisualizacao.classList.remove('ativo');
+            uploadAreaDiv.style.display = 'block';
+            avisoArea.innerHTML = '<span>🔐 Modo Admin ativo - Você pode atualizar os dados</span><span>📅 Última atualização: <span id="dataAtualizacao2">--/--/----</span></span>';
+            document.getElementById('dataAtualizacao2').textContent = document.getElementById('dataAtualizacao').textContent;
+        });
+
+        // Upload
+        if(dropArea) {
+            dropArea.addEventListener('click', () => fileInput.click());
+            dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.style.borderColor = '#764ba2'; });
+            dropArea.addEventListener('dragleave', () => { dropArea.style.borderColor = '#667eea'; });
+            dropArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropArea.style.borderColor = '#667eea';
+                const file = e.dataTransfer.files[0];
+                if(file) processExcel(file);
+            });
+        }
 
         fileInput.addEventListener('change', (e) => { if(e.target.files[0]) processExcel(e.target.files[0]); });
-        
+
         btnLimpar.addEventListener('click', () => {
-            if(confirm('⚠️ Isso irá REMOVER todos os dados do dashboard. Os membros verão uma tela vazia até você fazer um novo upload. Confirmar?')) {
+            if(confirm('⚠️ Isso irá REMOVER todos os dados. Confirmar?')) {
                 localStorage.clear();
                 location.reload();
             }
         });
-
-        uploadArea.addEventListener('click', () => fileInput.click());
-        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#764ba2'; });
-        uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = '#667eea'; });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#667eea';
-            const file = e.dataTransfer.files[0];
-            if(file) processExcel(file);
-        });
-
-        function copiarLinkVisualizacao() {
-            const link = window.location.href.replace('/admin.html', '/index.html');
-            navigator.clipboard.writeText(link);
-            alert('✅ Link para membros copiado!\n\n' + link);
-        }
 
         function processExcel(file) {
             const reader = new FileReader();
@@ -233,9 +279,7 @@
                 localStorage.setItem('dashboardData', JSON.stringify(todosDados));
                 localStorage.setItem('lastUpdate', new Date().toISOString());
                 document.getElementById('dataAtualizacao').textContent = new Date().toLocaleDateString('pt-BR');
-                dashboard.style.display = 'block';
-                uploadArea.style.display = 'none';
-                alert(`✅ ${todosDados.length} registros carregados! Membros agora verão os novos dados.`);
+                alert(`✅ ${todosDados.length} registros carregados!`);
             };
             reader.readAsArrayBuffer(file);
         }
@@ -270,6 +314,9 @@
             document.getElementById('totalMaturacao').innerHTML = maturacao.toFixed(1)+' kg';
             document.getElementById('totalAvaria').innerHTML = avaria.toFixed(1)+' kg';
             document.getElementById('totalVencimento').innerHTML = vencimento.toFixed(1)+' kg';
+            document.getElementById('valorMaturacao').innerHTML = 'R$ '+valMat.toFixed(2);
+            document.getElementById('valorAvaria').innerHTML = 'R$ '+valAv.toFixed(2);
+            document.getElementById('valorVencimento').innerHTML = 'R$ '+valVen.toFixed(2);
 
             criarGraficos(maturacao, avaria, vencimento, porLoja, porProduto, porMotivo);
             atualizarTabela();
@@ -333,11 +380,10 @@
         document.getElementById('filtroTipo').addEventListener('change', atualizarTabela);
         document.getElementById('filtroProduto').addEventListener('input', atualizarTabela);
 
+        // Carregar dados salvos
         const saved = localStorage.getItem('dashboardData');
         if(saved) {
             processarDados(JSON.parse(saved));
-            dashboard.style.display = 'block';
-            uploadArea.style.display = 'none';
             document.getElementById('dataAtualizacao').textContent = new Date(localStorage.getItem('lastUpdate')).toLocaleDateString('pt-BR');
         }
     </script>
